@@ -15,7 +15,7 @@ body {
 
 h1, h2 {
     text-align: center;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
 }
 
 .container {
@@ -78,7 +78,7 @@ h1, h2 {
     font-size: 15px;
 }
 
-/* SMALL DELETE BUTTON */
+/* DELETE BUTTON */
 .delete-btn {
     position: absolute;
     top: 10px;
@@ -108,6 +108,7 @@ h1, h2 {
     <!-- INPUT -->
     <div class="input-box">
         <input id="subject" placeholder="Subject Name">
+        <input id="date" type="date">
         <input id="hours" type="number" placeholder="Hours" min="0">
         <input id="minutes" type="number" placeholder="Minutes" min="0" max="59">
         <input id="mustCover" type="number" placeholder="Must Cover Time (minutes)">
@@ -124,26 +125,42 @@ let data = JSON.parse(localStorage.getItem("studyData")) || {};
 
 function addStudy() {
     const subject = document.getElementById("subject").value.trim();
+    const date = document.getElementById("date").value;
     const hours = parseInt(document.getElementById("hours").value) || 0;
     const minutes = parseInt(document.getElementById("minutes").value) || 0;
     const must = parseInt(document.getElementById("mustCover").value);
+
     const totalMinutes = hours * 60 + minutes;
 
-    if (!subject || totalMinutes <= 0) {
-        alert("Enter valid subject & time");
+    if (!subject || !date || totalMinutes <= 0) {
+        alert("Please enter subject, date, and valid time");
         return;
     }
 
     if (!data[subject]) {
-        data[subject] = { mustCover: must || 0, sessions: [] };
+        data[subject] = {
+            mustCover: must || 0,
+            sessions: {} // date-wise
+        };
     }
 
     if (!isNaN(must)) {
         data[subject].mustCover = must;
     }
 
-    data[subject].sessions.push(totalMinutes);
+    // SAME SUBJECT + SAME DATE → ADD
+    if (data[subject].sessions[date]) {
+        data[subject].sessions[date] += totalMinutes;
+    } else {
+        data[subject].sessions[date] = totalMinutes;
+    }
+
     localStorage.setItem("studyData", JSON.stringify(data));
+
+    // clear inputs
+    document.getElementById("hours").value = "";
+    document.getElementById("minutes").value = "";
+
     renderSubjects();
 }
 
@@ -160,16 +177,19 @@ function renderSubjects() {
     container.innerHTML = "";
 
     for (let subject in data) {
-        let total = 0, max = 0, achieved = 0;
+        const days = Object.values(data[subject].sessions);
+        let total = 0;
+        let max = 0;
+        let achieved = 0;
         const must = data[subject].mustCover;
 
-        data[subject].sessions.forEach(m => {
+        days.forEach(m => {
             total += m;
             if (m > max) max = m;
             if (m >= must) achieved++;
         });
 
-        const avg = Math.round(total / data[subject].sessions.length);
+        const avg = days.length ? Math.round(total / days.length) : 0;
 
         container.innerHTML += `
             <div class="subject-card">
@@ -193,4 +213,3 @@ renderSubjects();
 
 </body>
 </html>
-
