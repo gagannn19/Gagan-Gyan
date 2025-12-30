@@ -121,94 +121,106 @@ h1, h2 {
 </div>
 
 <script>
-let data = JSON.parse(localStorage.getItem("studyData")) || {};
+document.addEventListener("DOMContentLoaded", function () {
 
-function addStudy() {
-    const subject = document.getElementById("subject").value.trim();
-    const date = document.getElementById("date").value;
-    const hours = parseInt(document.getElementById("hours").value) || 0;
-    const minutes = parseInt(document.getElementById("minutes").value) || 0;
-    const must = parseInt(document.getElementById("mustCover").value);
+    let data = JSON.parse(localStorage.getItem("studyData")) || {};
 
-    const totalMinutes = hours * 60 + minutes;
+    const subjectEl = document.getElementById("subject");
+    const dateEl = document.getElementById("date");
+    const hoursEl = document.getElementById("hours");
+    const minutesEl = document.getElementById("minutes");
+    const mustCoverEl = document.getElementById("mustCover");
+    const container = document.getElementById("subjectsContainer");
 
-    if (!subject || !date || totalMinutes <= 0) {
-        alert("Please enter subject, date, and valid time");
-        return;
+    // Auto set today's date
+    dateEl.valueAsDate = new Date();
+
+    function saveData() {
+        localStorage.setItem("studyData", JSON.stringify(data));
     }
 
-    if (!data[subject]) {
-        data[subject] = {
-            mustCover: must || 0,
-            sessions: {} // date-wise
-        };
+    window.addStudy = function () {
+        const subject = subjectEl.value.trim();
+        const date = dateEl.value;
+        const hours = parseInt(hoursEl.value) || 0;
+        const minutes = parseInt(minutesEl.value) || 0;
+        const must = parseInt(mustCoverEl.value);
+
+        const totalMinutes = hours * 60 + minutes;
+
+        if (!subject || !date || totalMinutes <= 0) {
+            alert("Please enter subject, date and valid time");
+            return;
+        }
+
+        if (!data[subject]) {
+            data[subject] = {
+                mustCover: must || 0,
+                sessions: {}
+            };
+        }
+
+        if (!isNaN(must)) {
+            data[subject].mustCover = must;
+        }
+
+        // SAME SUBJECT + SAME DATE => ADD TIME
+        if (data[subject].sessions[date]) {
+            data[subject].sessions[date] += totalMinutes;
+        } else {
+            data[subject].sessions[date] = totalMinutes;
+        }
+
+        saveData();
+        renderSubjects();
+
+        hoursEl.value = "";
+        minutesEl.value = "";
+    };
+
+    window.deleteSubject = function (subject) {
+        if (confirm(`Delete "${subject}"?`)) {
+            delete data[subject];
+            saveData();
+            renderSubjects();
+        }
+    };
+
+    function renderSubjects() {
+        container.innerHTML = "";
+
+        for (let subject in data) {
+            const days = Object.values(data[subject].sessions);
+            let total = 0, max = 0, achieved = 0;
+            const must = data[subject].mustCover;
+
+            days.forEach(m => {
+                total += m;
+                if (m > max) max = m;
+                if (m >= must) achieved++;
+            });
+
+            const avg = days.length ? Math.round(total / days.length) : 0;
+
+            container.innerHTML += `
+                <div class="subject-card">
+                    <button class="delete-btn" onclick="deleteSubject('${subject}')">✕</button>
+                    <div class="subject-title">${subject}</div>
+                    <div class="stat"><b>Max Time:</b> ${format(max)}</div>
+                    <div class="stat"><b>Average Time:</b> ${format(avg)}</div>
+                    <div class="stat"><b>Must Time:</b> ${must} min</div>
+                    <div class="stat"><b>Must Time Achieved:</b> ${achieved}</div>
+                </div>
+            `;
+        }
     }
 
-    if (!isNaN(must)) {
-        data[subject].mustCover = must;
+    function format(min) {
+        return `${Math.floor(min / 60)} hr ${min % 60} min`;
     }
-
-    // SAME SUBJECT + SAME DATE → ADD
-    if (data[subject].sessions[date]) {
-        data[subject].sessions[date] += totalMinutes;
-    } else {
-        data[subject].sessions[date] = totalMinutes;
-    }
-
-    localStorage.setItem("studyData", JSON.stringify(data));
-
-    // clear inputs
-    document.getElementById("hours").value = "";
-    document.getElementById("minutes").value = "";
 
     renderSubjects();
-}
-
-function deleteSubject(subject) {
-    if (confirm(`Delete "${subject}"?`)) {
-        delete data[subject];
-        localStorage.setItem("studyData", JSON.stringify(data));
-        renderSubjects();
-    }
-}
-
-function renderSubjects() {
-    const container = document.getElementById("subjectsContainer");
-    container.innerHTML = "";
-
-    for (let subject in data) {
-        const days = Object.values(data[subject].sessions);
-        let total = 0;
-        let max = 0;
-        let achieved = 0;
-        const must = data[subject].mustCover;
-
-        days.forEach(m => {
-            total += m;
-            if (m > max) max = m;
-            if (m >= must) achieved++;
-        });
-
-        const avg = days.length ? Math.round(total / days.length) : 0;
-
-        container.innerHTML += `
-            <div class="subject-card">
-                <button class="delete-btn" onclick="deleteSubject('${subject}')">✕</button>
-                <div class="subject-title">${subject}</div>
-                <div class="stat"><b>Max Time:</b> ${format(max)}</div>
-                <div class="stat"><b>Average Time:</b> ${format(avg)}</div>
-                <div class="stat"><b>Must Time:</b> ${must} min</div>
-                <div class="stat"><b>Must Time Achieved:</b> ${achieved}</div>
-            </div>
-        `;
-    }
-}
-
-function format(min) {
-    return `${Math.floor(min / 60)} hr ${min % 60} min`;
-}
-
-renderSubjects();
+});
 </script>
 
 </body>
