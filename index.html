@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Gagan Gyaan</title>
-    <!-- change 3 -->
+    <!-- change 4 -->
 
 <style>
 :root {
@@ -13,9 +13,7 @@
     --light: #fff6d5;
 }
 
-* {
-    box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
     margin: 0;
@@ -102,7 +100,7 @@ h1 {
     margin: 6px 0;
 }
 
-/* DELETE */
+/* DELETE SUBJECT */
 .delete-btn {
     position: absolute;
     top: 10px;
@@ -117,15 +115,45 @@ h1 {
     font-size: 14px;
 }
 
-.delete-btn:hover {
-    background: #b71c1c;
+/* DROPDOWN */
+.toggle-btn {
+    margin-top: 10px;
+    background: #6d4c41;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 13px;
 }
 
-/* MOBILE */
+.days {
+    margin-top: 10px;
+    display: none;
+}
+
+.day-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fff;
+    padding: 6px 8px;
+    border-radius: 6px;
+    margin-top: 6px;
+    font-size: 13px;
+}
+
+.day-row button {
+    border: none;
+    background: #d32f2f;
+    color: white;
+    border-radius: 4px;
+    padding: 2px 6px;
+    cursor: pointer;
+}
+
 @media (max-width: 600px) {
-    body {
-        padding: 16px;
-    }
+    body { padding: 16px; }
 }
 </style>
 </head>
@@ -174,10 +202,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const name = subjectEl.value.trim();
         const key = name.toLowerCase();
         const date = dateEl.value;
-        const minutes = (+hoursEl.value || 0) * 60 + (+minutesEl.value || 0);
+        const mins = (+hoursEl.value || 0) * 60 + (+minutesEl.value || 0);
         const must = +mustCoverEl.value;
 
-        if (!name || !date || minutes <= 0) {
+        if (!name || !date || mins <= 0) {
             alert("Please enter valid subject, date and time");
             return;
         }
@@ -186,14 +214,9 @@ document.addEventListener("DOMContentLoaded", () => {
             data[key] = { name, mustCover: must || 0, sessions: {} };
         }
 
-        if (Array.isArray(data[key].sessions)) {
-            data[key].sessions = {};
-        }
-
         if (!isNaN(must)) data[key].mustCover = must;
 
-        data[key].sessions[date] =
-            (data[key].sessions[date] || 0) + minutes;
+        data[key].sessions[date] = (data[key].sessions[date] || 0) + mins;
 
         save();
         render();
@@ -210,20 +233,49 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
 
+    window.deleteDay = function (key, date) {
+        if (confirm(`Delete data for ${date}?`)) {
+            delete data[key].sessions[date];
+            if (Object.keys(data[key].sessions).length === 0) {
+                delete data[key];
+            }
+            save();
+            render();
+        }
+    };
+
+    window.toggleDays = function (id, btn) {
+        const el = document.getElementById(id);
+        const open = el.style.display === "block";
+        el.style.display = open ? "none" : "block";
+        btn.textContent = open ? "Show Daily Data ▼" : "Hide Daily Data ▲";
+    };
+
     function render() {
         container.innerHTML = "";
 
         for (let key in data) {
-            const days = Object.values(data[key].sessions);
+            const entries = Object.entries(data[key].sessions);
             let total = 0, max = 0, achieved = 0;
 
-            days.forEach(d => {
-                total += d;
-                max = Math.max(max, d);
-                if (d >= data[key].mustCover) achieved++;
+            entries.forEach(([_, v]) => {
+                total += v;
+                max = Math.max(max, v);
+                if (v >= data[key].mustCover) achieved++;
             });
 
-            const avg = days.length ? Math.round(total / days.length) : 0;
+            const avg = entries.length ? Math.round(total / entries.length) : 0;
+            const daysId = "days_" + key.replace(/\s/g, "");
+
+            let daysHTML = "";
+            entries.forEach(([date, mins]) => {
+                daysHTML += `
+                    <div class="day-row">
+                        <span>📅 ${date} — ${format(mins)}</span>
+                        <button onclick="deleteDay('${key}','${date}')">✕</button>
+                    </div>
+                `;
+            });
 
             container.innerHTML += `
                 <div class="subject-card">
@@ -233,6 +285,12 @@ document.addEventListener("DOMContentLoaded", () => {
                     <div class="stat"><b>Average Time:</b> ${format(avg)}</div>
                     <div class="stat"><b>Must Time:</b> ${data[key].mustCover} min</div>
                     <div class="stat"><b>Must Time Achieved:</b> ${achieved}</div>
+                    <button class="toggle-btn" onclick="toggleDays('${daysId}', this)">
+                        Show Daily Data ▼
+                    </button>
+                    <div class="days" id="${daysId}">
+                        ${daysHTML}
+                    </div>
                 </div>
             `;
         }
