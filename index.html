@@ -247,11 +247,17 @@ document.addEventListener("DOMContentLoaded", () => {
         const name = subjectEl.value.trim();
         const key = name.toLowerCase();
         const date = dateEl.value;
-        const mins = (+hoursEl.value || 0) * 60 + (+minutesEl.value || 0);
+
+        const mins =
+            (+hoursEl.value || 0) * 60 +
+            (+minutesEl.value || 0);
+
+        const safeMins = Math.max(0, mins);
         const must = +mustCoverEl.value;
 
-        if (!name || !date || mins <= 0) {
-            alert("Please enter valid subject, date and time");
+        // ✅ allow 0 minutes, block only negative
+        if (!name || !date || mins < 0) {
+            alert("Please enter valid subject and date");
             return;
         }
 
@@ -261,7 +267,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (!isNaN(must)) data[key].mustCover = must;
 
-        data[key].sessions[date] = (data[key].sessions[date] || 0) + mins;
+        data[key].sessions[date] =
+            (data[key].sessions[date] || 0) + safeMins;
 
         save();
         render();
@@ -309,7 +316,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (v >= data[key].mustCover) achieved++;
             });
 
-            const avg = entries.length ? Math.round(total / entries.length) : 0;
+            const avg = entries.length
+                ? Math.round(total / entries.length)
+                : 0;
+
             const daysId = "days_" + key;
 
             let daysHTML = "";
@@ -351,3 +361,4 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+
